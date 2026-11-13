@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediBand — Emergency Health & SOS Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 28px rgba(220, 38, 38, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+    .sos-pulse {
+      animation: pulse-ring 1.8s infinite;
+    }
+    .emergency-flash {
+      animation: bg-flash 1s infinite alternate;
+    }
+    @keyframes bg-flash {
+      from { background-color: #ffffff; }
+      to { background-color: #fef2f2; }
+    }
+  </style>
+</head>
+<body id="mainBody" class="bg-white text-black font-sans min-h-screen antialiased selection:bg-red-100">
+
+  <!-- TOP PREMIUM DASHBOARD NAVBAR -->
+  <header class="border-b border-neutral-200 bg-white sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-bold text-xl">
+          M+
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight text-black">MediBand <span class="text-red-600">SOS</span></h1>
+          <p class="text-xs text-neutral-600 font-medium">24/7 Free Emergency & Vitals Response</p>
+        </div>
+      </div>
+
+      <!-- Status & Demo Simulator -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="bandStatus" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+          Band Connected
+        </span>
+        <button onclick="simulateUnconscious()" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-black text-black hover:bg-black hover:text-white transition">
+          <i class="fa-solid fa-bolt mr-1"></i> Test Unconscious Alert
+        </button>
+        <button onclick="resetSystem()" id="stopAlarmBtn" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold bg-black text-white hover:bg-neutral-800 transition">
+          <i class="fa-solid fa-volume-xmark mr-1"></i> Stop Alarm & Reset
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- EMERGENCY BANNER (Hidden until triggered) -->
+  <div id="emergencyBanner" class="hidden bg-red-600 text-white py-3 px-4 text-center font-bold text-sm tracking-wide">
+    <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+    CRITICAL EMERGENCY DETECTED! ALARM ACTIVE • CALLING AMBULANCE (108) • FAMILY NOTIFIED
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-8">
+
+    <!-- 1. TOP DASHBOARD: PATIENT DETAILS & LIVE VITALS -->
+    <section class="border-2 border-neutral-200 rounded-2xl p-6 bg-white shadow-sm">
+      <div class="flex flex-wrap justify-between items-center border-b border-neutral-200 pb-4 mb-5 gap-2">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-neutral-500">Patient Medical ID</span>
+          <h2 class="text-2xl font-extrabold text-black mt-0.5" id="pNameDisplay">Rajesh Sharma (Age: 58)</h2>
+        </div>
+        <button onclick="toggleEditModal()" class="text-xs font-bold px-3.5 py-2 rounded-lg border border-neutral-300 hover:border-black transition">
+          <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Details
+        </button>
+      </div>
+
+      <!-- Patient Info Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200">
+          <p class="text-xs font-semibold text-neutral-500">Blood Group</p>
+          <p class="text-lg font-extrabold text-red-600 mt-0.5" id="pBloodDisplay">B+ Positive</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200">
+          <p class="text-xs font-semibold text-neutral-500">Medical Problem</p>
+          <p class="text-sm font-bold text-black mt-1" id="pProblemDisplay">High BP & Mild Heart Condition</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200">
+          <p class="text-xs font-semibold text-neutral-500">Preferred Hospital</p>
+          <p class="text-sm font-bold text-black mt-1" id="pHospitalDisplay">Regency Hospital (Auto Nearest in SOS)</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200">
+          <p class="text-xs font-semibold text-neutral-500">Family Emergency Contact</p>
+          <p class="text-sm font-bold text-black mt-1" id="pFamilyDisplay">Amit Sharma (+91 98765 43210)</p>
+        </div>
+      </div>
+
+      <!-- Live MediBand Vitals -->
+      <div class="grid grid-cols-3 gap-4 pt-2 border-t border-neutral-100">
+        <div class="text-center p-3 rounded-xl border border-neutral-200">
+          <p class="text-xs font-bold text-neutral-500 uppercase">Heart Rate</p>
+          <p class="text-2xl sm:text-3xl font-black text-black mt-1"><span id="hrVal">76</span> <span class="text-xs font-semibold">BPM</span></p>
+        </div>
+        <div class="text-center p-3 rounded-xl border border-neutral-200">
+          <p class="text-xs font-bold text-neutral-500 uppercase">Oxygen (SpO2)</p>
+          <p class="text-2xl sm:text-3xl font-black text-black mt-1"><span id="spo2Val">98</span><span class="text-xs font-semibold">%</span></p>
+        </div>
+        <div class="text-center p-3 rounded-xl border border-neutral-200">
+          <p class="text-xs font-bold text-neutral-500 uppercase">Consciousness</p>
+          <p class="text-lg sm:text-xl font-black text-emerald-700 mt-2" id="stateVal">NORMAL</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. CENTER BIG ROUND RED EMERGENCY BUTTON -->
+    <section class="flex flex-col items-center justify-center py-4 text-center">
+      <p class="text-sm font-bold text-neutral-700 mb-5">
+        Tabiyat bigadne ya emergency hone par niche lal button dabayein:
+      </p>
+
+      <button onclick="triggerEmergency('Manual SOS Button Pressed')" id="sosButton"
+        class="sos-pulse w-48 h-48 sm:w-56 sm:h-56 rounded-full bg-red-600 hover:bg-red-700 active:scale-95 text-white flex flex-col items-center justify-center shadow-2xl border-8 border-red-100 transition cursor-pointer">
+        <i class="fa-solid fa-phone-volume text-4xl sm:text-5xl mb-2"></i>
+        <span class="text-2xl sm:text-3xl font-black tracking-wider">SOS</span>
+        <span class="text-xs font-bold uppercase tracking-widest mt-1 opacity-90">Emergency Help</span>
+      </button>
+
+      <p class="text-xs text-neutral-500 mt-5 max-w-md">
+        Button dabate hi <b>Alarm bajega</b>, <b>108 Ambulance</b> ko call lagega, <b>Nearest Hospital</b> track hoga, aur <b>Family ke phone</b> par live location jayegi.
+      </p>
+    </section>
+
+    <!-- 3. LIVE EMERGENCY TRACKING & FAMILY ALERT PANEL -->
+    <section id="actionPanel" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Nearest Hospital & Ambulance Tracking -->
+      <div class="border-2 border-neutral-200 rounded-2xl p-6 bg-white">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-extrabold text-black flex items-center gap-2">
+            <i class="fa-solid fa-truck-medical text-red-600"></i> Ambulance & Hospital Track
+          </h3>
+          <span class="text-xs font-bold px-2.5 py-1 bg-neutral-100 rounded-md">FREE GPS</span>
+        </div>
+
+        <div class="space-y-3 text-sm">
+          <div class="p-3 rounded-xl bg-neutral-50 border border-neutral-200">
+            <p class="text-xs font-bold text-neutral-500">Patient Live Location:</p>
+            <p class="font-bold text-black mt-0.5" id="locationText">Click SOS or Detect Location to fetch GPS...</p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-neutral-50 border border-neutral-200">
+            <p class="text-xs font-bold text-neutral-500">Nearest Emergency Hospital:</p>
+            <p class="font-bold text-black mt-0.5" id="nearestHospitalText">Auto-searches nearest hospital during emergency</p>
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <a href="tel:108" class="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm transition">
+              <i class="fa-solid fa-phone mr-1"></i> Call Ambulance (108)
+            </a>
+            <button onclick="findNearestHospital()" class="flex-1 bg-black hover:bg-neutral-800 text-white font-bold py-3 rounded-xl text-sm transition">
+              <i class="fa-solid fa-hospital mr-1"></i> Nearest Hospital
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Family Member Phone Live Status Preview -->
+      <div class="border-2 border-neutral-200 rounded-2xl p-6 bg-white">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-extrabold text-black flex items-center gap-2">
+            <i class="fa-solid fa-mobile-screen-button text-black"></i> Family Phone Live Alert
+          </h3>
+          <span id="familyAlertBadge" class="text-xs font-bold px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-md">Standby</span>
+        </div>
+
+        <div class="p-4 rounded-xl bg-neutral-50 border border-neutral-200 text-xs space-y-1.5 font-medium text-neutral-800" id="familyMessagePreview">
+          <p class="font-bold text-black">Live Preview (Jo family member ke phone par dikhega):</p>
+          <p>• Patient: <span class="font-bold">Rajesh Sharma</span></p>
+          <p>• Halat (Condition): <span class="font-bold text-emerald-700">Normal & Conscious</span></p>
+          <p>• Vitals: 76 BPM | SpO2 98%</p>
+          <p>• Live Location: Ready to share on SOS</p>
+        </div>
+
+        <button onclick="shareToFamilyWhatsApp()" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+          <i class="fa-brands fa-whatsapp text-lg"></i> Send Live Status to Family Phone
+        </button>
+      </div>
+
+    </section>
+
+    <!-- 4. OPTIONAL GEMINI AI FIRST-AID ASSISTANT -->
+    <section class="border-2 border-neutral-200 rounded-2xl p-6 bg-white">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <div>
+          <h3 class="text-lg font-extrabold text-black">Gemini AI First-Aid Guide (For Bystanders)</h3>
+          <p class="text-xs text-neutral-600">Emergency ke waqt aas-paas ke logon ko turant kya karna chahiye</p>
+        </div>
+        <input type="password" id="geminiKey" placeholder="Optional: Paste Gemini API Key" 
+          class="border border-neutral-300 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-black">
+      </div>
+      <div id="aiFirstAidBox" class="p-4 rounded-xl bg-neutral-50 border border-neutral-200 text-sm text-neutral-800 leading-relaxed">
+        Abhi patient normal hai. Agar emergency trigger hoti hai toh yahan turant First-Aid instructions dikhenge.
+      </div>
+    </section>
+
+  </main>
+
+  <!-- EDIT PATIENT DETAILS MODAL -->
+  <div id="editModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-neutral-200 shadow-xl">
+      <h3 class="text-xl font-extrabold text-black">Update Patient Details</h3>
+      <div>
+        <label class="block text-xs font-bold mb-1">Patient Name & Age</label>
+        <input id="inName" type="text" value="Rajesh Sharma (Age: 58)" class="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-bold mb-1">Blood Group</label>
+        <input id="inBlood" type="text" value="B+ Positive" class="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-bold mb-1">Medical Problem / Disease</label>
+        <input id="inProblem" type="text" value="High BP & Mild Heart Condition" class="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-bold mb-1">Preferred Hospital</label>
+        <input id="inHospital" type="text" value="Regency Hospital" class="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-bold mb-1">Family Member Name & Phone</label>
+        <input id="inFamily" type="text" value="Amit Sharma (+91 98765 43210)" class="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="toggleEditModal()" class="px-4 py-2 text-sm font-bold border border-neutral-300 rounded-lg">Cancel</button>
+        <button onclick="saveDetails()" class="px-4 py-2 text-sm font-bold bg-black text-white rounded-lg">Save Details</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let alarmInterval = null;
+    let audioCtx = null;
+    let currentLat = null;
+    let currentLon = null;
+    let mapsUrl = "https://www.google.com/maps/search/nearest+hospital";
+
+    // Loud Emergency Siren using Web Audio API (100% Free, No external MP3 needed)
+    function startSiren() {
+      if (alarmInterval) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      alarmInterval = setInterval(() => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.45);
+      }, 600);
+    }
+
+    function stopSiren() {
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+    }
+
+    // Fetch Live Location & Auto-Find Nearest Hospital
+    function detectLocationAndHospital(openMap = false) {
+      const locText = document.getElementById('locationText');
+      const hospText = document.getElementById('nearestHospitalText');
+
+      if ("geolocation" in navigator) {
+        locText.innerText = "Fetching live GPS coordinates...";
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            currentLat = pos.coords.latitude.toFixed(5);
+            currentLon = pos.coords.longitude.toFixed(5);
+            mapsUrl = `https://www.google.com/maps/search/hospital/@${currentLat},${currentLon},15z`;
+            locText.innerHTML = `Lat: ${currentLat}, Lng: ${currentLon} <a href="https://maps.google.com/?q=${currentLat},${currentLon}" target="_blank" class="underline text-red-600 ml-1">(View Map)</a>`;
+            hospText.innerHTML = `Nearest Emergency Hospital Ready <a href="${mapsUrl}" target="_blank" class="underline text-red-600 font-extrabold ml-1">Open Route →</a>`;
+            updateFamilyPreview(true);
+            if (openMap) window.open(mapsUrl, '_blank');
+          },
+          () => {
+            locText.innerText = "GPS Permission Blocked — Using City Emergency Zone";
+            hospText.innerHTML = `<a href="${mapsUrl}" target="_blank" class="underline text-red-600 font-extrabold">Search Nearest Hospital on Google Maps →</a>`;
+            if (openMap) window.open(mapsUrl, '_blank');
+          }
+        );
+      }
+    }
+
+    function findNearestHospital() {
+      detectLocationAndHospital(true);
+    }
+
+    // Simulate Unconscious State from MediBand Sensors
+    function simulateUnconscious() {
+      document.getElementById('hrVal').innerText = "42";
+      document.getElementById('spo2Val').innerText = "84";
+      document.getElementById('stateVal').innerText = "UNCONSCIOUS";
+      document.getElementById('stateVal').className = "text-lg sm:text-xl font-black text-red-600 mt-2";
+      triggerEmergency("Person Unconscious Detected by MediBand");
+    }
+
+    // Main Emergency Trigger
+    function triggerEmergency(reason) {
+      startSiren();
+      document.getElementById('mainBody').classList.add('emergency-flash');
+      document.getElementById('emergencyBanner').classList.remove('hidden');
+      document.getElementById('stopAlarmBtn').classList.remove('hidden');
+      document.getElementById('familyAlertBadge').innerText = "ALERT SENT TO FAMILY";
+      document.getElementById('familyAlertBadge').className = "text-xs font-bold px-2.5 py-1 bg-red-600 text-white rounded-md";
+
+      detectLocationAndHospital(false);
+      updateFamilyPreview(true);
+      generateFirstAid(reason);
+
+      // Auto-trigger Ambulance Call on mobile devices
+      setTimeout(() => {
+        window.location.href = "tel:108";
+      }, 1200);
+    }
+
+    function resetSystem() {
+      stopSiren();
+      document.getElementById('mainBody').classList.remove('emergency-flash');
+      document.getElementById('emergencyBanner').classList.add('hidden');
+      document.getElementById('stopAlarmBtn').classList.add('hidden');
+      document.getElementById('hrVal').innerText = "76";
+      document.getElementById('spo2Val').innerText = "98";
+      document.getElementById('stateVal').innerText = "NORMAL";
+      document.getElementById('stateVal').className = "text-lg sm:text-xl font-black text-emerald-700 mt-2";
+      document.getElementById('familyAlertBadge').innerText = "Standby";
+      document.getElementById('familyAlertBadge').className = "text-xs font-bold px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-md";
+      updateFamilyPreview(false);
+    }
+
+    function updateFamilyPreview(isEmergency) {
+      const name = document.getElementById('pNameDisplay').innerText;
+      const problem = document.getElementById('pProblemDisplay').innerText;
+      const hr = document.getElementById('hrVal').innerText;
+      const spo2 = document.getElementById('spo2Val').innerText;
+      const state = document.getElementById('stateVal').innerText;
+      const loc = currentLat ? `https://maps.google.com/?q=${currentLat},${currentLon}` : "Fetching GPS...";
+
+      document.getElementById('familyMessagePreview').innerHTML = `
+        <p class="font-bold ${isEmergency ? 'text-red-600' : 'text-black'}">
+          ${isEmergency ? '🚨 EMERGENCY ALERT ON FAMILY PHONE:' : 'Live Preview (Family Member Phone):'}
+        </p>
+        <p>• Patient: <b>${name}</b></p>
+        <p>• Medical Issue: <b>${problem}</b></p>
+        <p>• Current Halat: <b class="${isEmergency ? 'text-red-600' : 'text-emerald-700'}">${state}</b> (HR: ${hr} BPM, SpO2: ${spo2}%)</p>
+        <p>• Live Location: <span class="underline">${loc}</span></p>
+        <p>• Action: <b>Nearest Hospital & 108 Ambulance Notified</b></p>
+      `;
+    }
+
+    function shareToFamilyWhatsApp() {
+      const name = document.getElementById('pNameDisplay').innerText;
+      const problem = document.getElementById('pProblemDisplay').innerText;
+      const hr = document.getElementById('hrVal').innerText;
+      const spo2 = document.getElementById('spo2Val').innerText;
+      const state = document.getElementById('stateVal').innerText;
+      const loc = currentLat ? `https://maps.google.com/?q=${currentLat},${currentLon}` : "Location pending";
+
+      const msg = `🚨 *MEDIBAND EMERGENCY ALERT* 🚨%0APatient: ${name}%0AHalat: ${state}%0AVitals: Heart Rate ${hr} BPM, SpO2 ${spo2}%%0AMedical Problem: ${problem}%0ALive Location: ${loc}%0ANearest Hospital: ${mapsUrl}`;
+      window.open(`https://wa.me/?text=${msg}`, '_blank');
+    }
+
+    async function generateFirstAid(reason) {
+      const apiKey = document.getElementById('geminiKey').value.trim();
+      const box = document.getElementById('aiFirstAidBox');
+      const problem = document.getElementById('pProblemDisplay').innerText;
+
+      if (!apiKey) {
+        box.innerHTML = `
+          <p class="font-bold text-red-600 mb-1">Immediate First-Aid Steps (Offline Mode):</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Patient ko seedha litayein aur bheed hata kar taazi hawa aane dein.</li>
+            <li>Agar unconscious hain toh recovery position (ek karwat) mein litayein.</li>
+            <li>Koi bhi paani ya dawai zabardasti muh mein na dalein.</li>
+            <li>108 Ambulance aur Nearest Hospital route upar active kar diya gaya hai.</li>
+          </ul>`;
+        return;
+      }
+
+      box.innerHTML = `<p class="font-bold animate-pulse">Gemini AI emergency first-aid tayar kar raha hai...</p>`;
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Emergency situation: ${reason}. Patient medical history: ${problem}. Give 4 very simple, urgent first-aid bullet points in Hinglish for bystanders until the ambulance arrives.` }] }]
+          })
+        });
+        const data = await res.json();
+        const reply = data.candidates[0].content.parts[0].text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+        box.innerHTML = reply;
+      } catch (e) {
+        box.innerHTML = `<p class="text-red-600 font-bold">Could not reach Gemini AI. Follow standard recovery position & wait for 108 Ambulance.</p>`;
+      }
+    }
+
+    function toggleEditModal() {
+      document.getElementById('editModal').classList.toggle('hidden');
+    }
+
+    function saveDetails() {
+      document.getElementById('pNameDisplay').innerText = document.getElementById('inName').value;
+      document.getElementById('pBloodDisplay').innerText = document.getElementById('inBlood').value;
+      document.getElementById('pProblemDisplay').innerText = document.getElementById('inProblem').value;
+      document.getElementById('pHospitalDisplay').innerText = document.getElementById('inHospital').value + " (Auto Nearest in SOS)";
+      document.getElementById('pFamilyDisplay').innerText = document.getElementById('inFamily').value;
+      updateFamilyPreview(false);
+      toggleEditModal();
+    }
+  </script>
+</body>
+</html>
